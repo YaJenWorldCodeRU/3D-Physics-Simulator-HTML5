@@ -1,0 +1,1523 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Physics Simulation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            background: #000;
+        }
+        
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #controls {
+            position: fixed;
+            bottom: 100px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            color: white;
+            width: 340px;
+            max-height: 65vh;
+            overflow-y: auto;
+            transition: all 0.3s;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        #controls.hidden {
+            display: none;
+        }
+        
+        .mode-section {
+            margin-bottom: 15px;
+            padding: 12px;
+            background: rgba(79, 195, 247, 0.2);
+            border-radius: 8px;
+            border-left: 3px solid #4fc3f7;        }
+        
+        .mode-title {
+            font-size: 15px;
+            color: #4fc3f7;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        
+        .control-group {
+            margin-bottom: 12px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 13px;
+            color: #b0b0b0;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: #333;
+            outline: none;
+            -webkit-appearance: none;
+            border-radius: 3px;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #4fc3f7;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        
+        select {
+            width: 100%;
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #444;
+            background: #2a2a2a;
+            color: white;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        
+        #weight-display {            position: fixed;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 56px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.8);
+            pointer-events: none;
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        #weight-display.show {
+            opacity: 1;
+        }
+        
+        .button-container {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+        }
+        
+        #toggle-btn {
+            background: #666;
+            color: white;
+        }
+        
+        #action-btn {            background: #4fc3f7;
+            color: #000;
+        }
+        
+        #reset-btn {
+            background: #ef5350;
+            color: white;
+        }
+        
+        .value {
+            color: #4fc3f7;
+            font-weight: bold;
+        }
+        
+        #info {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-size: 13px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        #info div {
+            margin: 5px 0;
+        }
+        
+        .hint {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            color: rgba(255,255,255,0.6);
+            font-size: 12px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px 15px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="weight-display">20kg</div>
+    
+    <div id="controls">
+        <div class="mode-section">
+            <div class="mode-title">📋 Режим симуляции</div>            <div class="control-group">
+                <select id="mode-select">
+                    <option value="ramp">1. Рампа и стекло</option>
+                    <option value="heavy">2. Тяжёлая ткань</option>
+                    <option value="slime">3. Слайм на блок</option>
+                    <option value="character">4. Персонаж и ткань</option>
+                    <option value="liquid">5. Жидкости в стакан</option>
+                </select>
+            </div>
+        </div>
+        
+        <div id="common-controls">
+            <div class="control-group">
+                <label>Детализация: <span id="faces-value" class="value">256</span></label>
+                <select id="faces-select">
+                    <option value="64">64</option>
+                    <option value="256" selected>256</option>
+                    <option value="1024">1024</option>
+                    <option value="4096">4096</option>
+                </select>
+            </div>
+        </div>
+        
+        <div id="ramp-controls">
+            <div class="control-group">
+                <label>Гравитация: <span id="gravity-value" class="value">9.8</span></label>
+                <input type="range" id="gravity" min="5" max="20" step="0.5" value="9.8">
+            </div>
+            <div class="control-group">
+                <label>Прозрачность стекла: <span id="opacity-value" class="value">0.7</span></label>
+                <input type="range" id="opacity" min="0.2" max="1" step="0.05" value="0.7">
+            </div>
+        </div>
+        
+        <div id="heavy-controls" style="display: none;">
+            <div class="control-group">
+                <label>Вес (kg): <span id="weight-value" class="value">20</span></label>
+                <input type="range" id="weight" min="1" max="1000" value="20">
+            </div>
+            <div class="control-group">
+                <label>Прозрачность: <span id="heavy-opacity-value" class="value">0.8</span></label>
+                <input type="range" id="heavy-opacity" min="0.3" max="1" step="0.05" value="0.8">
+            </div>
+        </div>
+        
+        <div id="slime-controls" style="display: none;">
+            <div class="control-group">
+                <label>Вязкость: <span id="viscosity-value" class="value">0.95</span></label>
+                <input type="range" id="viscosity" min="0.85" max="0.99" step="0.01" value="0.95">
+            </div>            <div class="control-group">
+                <label>Реалистичность: <span id="realism-value" class="value">0.9</span></label>
+                <input type="range" id="realism" min="0.5" max="1" step="0.05" value="0.9">
+            </div>
+            <div class="control-group">
+                <label>Цвет: <span id="slime-color-value" class="value">Зелёный</span></label>
+                <select id="slime-color">
+                    <option value="0x4ade80">Зелёный</option>
+                    <option value="0xf472b6">Розовый</option>
+                    <option value="0x60a5fa">Голубой</option>
+                    <option value="0xfbbf24">Жёлтый</option>
+                </select>
+            </div>
+        </div>
+        
+        <div id="character-controls" style="display: none;">
+            <div class="control-group">
+                <label>Скорость: <span id="speed-value" class="value">1</span></label>
+                <input type="range" id="speed" min="0.5" max="3" step="0.1" value="1">
+            </div>
+        </div>
+        
+        <div id="liquid-controls" style="display: none;">
+            <div class="control-group">
+                <label>Тип жидкости:</label>
+                <select id="liquid-type">
+                    <option value="water">💧 Вода</option>
+                    <option value="lava">🔥 Лава</option>
+                    <option value="juice">🍊 Сок</option>
+                    <option value="nonnewtonian">🧪 Неньютоновская</option>
+                    <option value="newtonian">⚗️ Ньютоновская</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Вязкость: <span id="liquid-viscosity-value" class="value">0.98</span></label>
+                <input type="range" id="liquid-viscosity" min="0.9" max="0.999" step="0.001" value="0.98">
+            </div>
+            <div class="control-group">
+                <label>Количество частиц: <span id="particle-count-value" class="value">800</span></label>
+                <input type="range" id="particle-count" min="200" max="2000" step="100" value="800">
+            </div>
+        </div>
+    </div>
+    
+    <div class="button-container">
+        <button id="toggle-btn">▼ Скрыть</button>
+        <button id="action-btn">▶️ Запуск</button>
+        <button id="reset-btn">🔄 Сброс</button>
+    </div>
+        <div id="info">
+        <div>Режим: <span id="mode-name" class="value">Рампа</span></div>
+        <div>Объектов: <span id="obj-count" class="value">0</span></div>
+        <div>FPS: <span id="fps" class="value">60</span></div>
+    </div>
+    
+    <div class="hint">🖱️ Левая кнопка - вращение | Правая - перемещение | Колесо - зум</div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        let scene, camera, renderer, controls;
+        let currentMode = 'ramp';
+        let cloth, balls = [], heavyCloth, slime, characterCloth, liquidSim;
+        let ramp, glassPanel, rod, floor, sphere;
+        let block, character;
+        let glass, liquidParticles = [];
+        let rampSegments = [];
+        let params = {
+            faces: 256,
+            gravity: 9.8,
+            opacity: 0.7,
+            weight: 20,
+            heavyOpacity: 0.8,
+            viscosity: 0.95,
+            realism: 0.9,
+            slimeColor: 0x4ade80,
+            speed: 1,
+            liquidType: 'water',
+            liquidViscosity: 0.98,
+            particleCount: 800
+        };
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a0a);
+            
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 3, 7);
+                        renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.2;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            
+            initLights();
+            initRampMode();
+            setupUI();
+            animate();
+        }
+
+        function initLights() {
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+            
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+            dirLight.position.set(5, 8, 5);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 2048;
+            dirLight.shadow.mapSize.height = 2048;
+            scene.add(dirLight);
+            
+            const pointLight1 = new THREE.PointLight(0x4fc3f7, 0.8, 10);
+            pointLight1.position.set(-3, 3, 3);
+            scene.add(pointLight1);
+        }
+
+        function clearScene() {
+            if (cloth) { cloth.dispose(); cloth = null; }
+            if (heavyCloth) { heavyCloth.dispose(); heavyCloth = null; }
+            if (slime) { slime.dispose(); slime = null; }
+            if (characterCloth) { characterCloth.dispose(); characterCloth = null; }
+            if (liquidSim) { liquidSim.dispose(); liquidSim = null; }
+            balls.forEach(ball => ball.dispose());
+            balls = [];
+            rampSegments.forEach(seg => scene.remove(seg));
+            rampSegments = [];
+            liquidParticles.forEach(p => scene.remove(p.mesh));
+            liquidParticles = [];
+            if (ramp) { scene.remove(ramp); ramp = null; }
+            if (glassPanel) { scene.remove(glassPanel); glassPanel = null; }
+            if (rod) { scene.remove(rod); rod = null; }
+            if (sphere) { scene.remove(sphere); sphere = null; }            if (floor) { scene.remove(floor); floor = null; }
+            if (block) { scene.remove(block); block = null; }
+            if (character) { scene.remove(character); character = null; }
+            if (glass) { scene.remove(glass); glass = null; }
+        }
+
+        function initRampMode() {
+            clearScene();
+            currentMode = 'ramp';
+            scene.background = new THREE.Color(0x0a0a0a);
+            scene.fog = new THREE.Fog(0x0a0a0a, 5, 20);
+            camera.position.set(0, 3, 7);
+            controls.target.set(0, 1.5, 0);
+            
+            // Glass panel - VERTICAL, in the back at z = -1
+            const glassGeom = new THREE.PlaneGeometry(3, 3.5);
+            const glassMat = new THREE.MeshPhysicalMaterial({
+                color: 0x88ccff,
+                metalness: 0.0,
+                roughness: 0.05,
+                transmission: 0.9,
+                thickness: 0.2,
+                transparent: true,
+                opacity: params.opacity,
+                side: THREE.DoubleSide,
+                clearcoat: 1.0,
+                ior: 1.5
+            });
+            
+            glassPanel = new THREE.Mesh(glassGeom, glassMat);
+            glassPanel.position.set(0, 1.75, -1);
+            glassPanel.castShadow = true;
+            scene.add(glassPanel);
+            
+            // Rod holding glass
+            const rodGeom = new THREE.CylinderGeometry(0.05, 0.05, 3.5, 16);
+            const rodMat = new THREE.MeshStandardMaterial({
+                color: 0xc0c0c0,
+                metalness: 0.95,
+                roughness: 0.1
+            });
+            
+            rod = new THREE.Mesh(rodGeom, rodMat);
+            rod.rotation.z = Math.PI / 2;
+            rod.position.set(0, 3.5, -1);
+            scene.add(rod);
+            
+            // Create proper curved ramp using multiple segments
+            createProperRamp();
+                        // Floor
+            const floorGeom = new THREE.PlaneGeometry(20, 20);
+            const floorMat = new THREE.MeshStandardMaterial({
+                color: 0x1a1a1a,
+                roughness: 0.4,
+                metalness: 0.6
+            });
+            
+            floor = new THREE.Mesh(floorGeom, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.y = 0;
+            floor.receiveShadow = true;
+            scene.add(floor);
+            
+            const grid = new THREE.GridHelper(20, 20, 0x333333, 0x222222);
+            grid.position.y = 0.01;
+            scene.add(grid);
+            
+            updateInfo();
+        }
+
+        function createProperRamp() {
+            // Create a smooth curved ramp using multiple box segments
+            const rampMat = new THREE.MeshStandardMaterial({
+                color: 0xd4a574,
+                roughness: 0.6,
+                metalness: 0.2
+            });
+            
+            const numSegments = 20;
+            const startX = -2.5;
+            const endX = 0.5;
+            const startY = 0.1;
+            const endY = 3;
+            const zPos = 1;
+            
+            for (let i = 0; i < numSegments; i++) {
+                const t = i / numSegments;
+                const nextT = (i + 1) / numSegments;
+                
+                // Quadratic curve for smooth ramp
+                const x1 = startX + (endX - startX) * t;
+                const y1 = startY + (endY - startY) * Math.pow(t, 0.7);
+                const x2 = startX + (endX - startX) * nextT;
+                const y2 = startY + (endY - startY) * Math.pow(nextT, 0.7);
+                
+                const segmentLength = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+                const angle = Math.atan2(y2 - y1, x2 - x1);
+                
+                const segmentGeom = new THREE.BoxGeometry(segmentLength, 0.15, 1);                const segment = new THREE.Mesh(segmentGeom, rampMat);
+                
+                segment.position.set(
+                    (x1 + x2) / 2,
+                    (y1 + y2) / 2,
+                    zPos
+                );
+                segment.rotation.z = angle - Math.PI / 2;
+                segment.castShadow = true;
+                segment.receiveShadow = true;
+                
+                scene.add(segment);
+                rampSegments.push(segment);
+            }
+            
+            // Add support pillar
+            const supportGeom = new THREE.CylinderGeometry(0.15, 0.2, 3.2, 16);
+            const support = new THREE.Mesh(supportGeom, rampMat);
+            support.position.set(startX, 1.6, zPos);
+            support.castShadow = true;
+            scene.add(support);
+            rampSegments.push(support);
+            
+            // Store ramp data for collision
+            ramp = {
+                segments: rampSegments,
+                startX: startX,
+                endX: endX,
+                startY: startY,
+                endY: endY,
+                zPos: zPos
+            };
+        }
+
+        function getRampHeight(x) {
+            // Quadratic curve matching the ramp
+            const t = (x - ramp.startX) / (ramp.endX - ramp.startX);
+            if (t < 0 || t > 1) return -1000;
+            return ramp.startY + (ramp.endY - ramp.startY) * Math.pow(t, 0.7);
+        }
+
+        function initHeavyMode() {
+            clearScene();
+            currentMode = 'heavy';
+            scene.background = new THREE.Color(0x8fa8c0);
+            camera.position.set(0, 1.5, 3.5);
+            controls.target.set(0, 0.7, 0);
+            
+            const sphereGeom = new THREE.SphereGeometry(0.7, 64, 64);
+            const sphereMat = new THREE.MeshPhysicalMaterial({                color: 0xf5e6d3,
+                roughness: 0.25,
+                metalness: 0.1,
+                clearcoat: 0.8
+            });
+            
+            sphere = new THREE.Mesh(sphereGeom, sphereMat);
+            sphere.position.y = 0.7;
+            sphere.castShadow = true;
+            sphere.receiveShadow = true;
+            scene.add(sphere);
+            
+            const floorGeom = new THREE.PlaneGeometry(20, 20);
+            const floorMat = new THREE.MeshStandardMaterial({
+                color: 0x8fa8c0,
+                roughness: 0.6,
+                metalness: 0.2
+            });
+            
+            floor = new THREE.Mesh(floorGeom, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.y = 0;
+            floor.receiveShadow = true;
+            scene.add(floor);
+            
+            heavyCloth = new ClothSimulation(params.faces, true);
+            updateInfo();
+        }
+
+        function initSlimeMode() {
+            clearScene();
+            currentMode = 'slime';
+            scene.background = new THREE.Color(0x2d3748);
+            scene.fog = new THREE.Fog(0x2d3748, 5, 15);
+            camera.position.set(0, 4, 5);
+            controls.target.set(0, 1, 0);
+            
+            const blockGeom = new THREE.BoxGeometry(1.5, 1, 1.5);
+            const blockMat = new THREE.MeshStandardMaterial({
+                color: 0x4a5568,
+                roughness: 0.5,
+                metalness: 0.3
+            });
+            
+            block = new THREE.Mesh(blockGeom, blockMat);
+            block.position.y = 0.5;
+            block.castShadow = true;
+            block.receiveShadow = true;
+            scene.add(block);
+                        const floorGeom = new THREE.PlaneGeometry(20, 20);
+            const floorMat = new THREE.MeshStandardMaterial({
+                color: 0x1a202c,
+                roughness: 0.6,
+                metalness: 0.2
+            });
+            
+            floor = new THREE.Mesh(floorGeom, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.y = 0;
+            floor.receiveShadow = true;
+            scene.add(floor);
+            
+            slime = new SlimeSimulation(params.faces);
+            updateInfo();
+        }
+
+        function initCharacterMode() {
+            clearScene();
+            currentMode = 'character';
+            scene.background = new THREE.Color(0x48bb78);
+            camera.position.set(0, 2, 6);
+            controls.target.set(0, 1, 0);
+            
+            const floorGeom = new THREE.PlaneGeometry(20, 20);
+            const floorMat = new THREE.MeshStandardMaterial({
+                color: 0x48bb78,
+                roughness: 0.8
+            });
+            
+            floor = new THREE.Mesh(floorGeom, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.y = 0;
+            floor.receiveShadow = true;
+            scene.add(floor);
+            
+            const frameGeom = new THREE.BoxGeometry(0.1, 3, 2);
+            const frameMat = new THREE.MeshStandardMaterial({ color: 0x4299e1 });
+            
+            const leftPost = new THREE.Mesh(frameGeom, frameMat);
+            leftPost.position.set(-1, 1.5, 0);
+            scene.add(leftPost);
+            
+            const rightPost = new THREE.Mesh(frameGeom, frameMat);
+            rightPost.position.set(1, 1.5, 0);
+            scene.add(rightPost);
+            
+            const charGroup = new THREE.Group();
+            
+            const bodyGeom = new THREE.BoxGeometry(0.5, 0.8, 0.3);            const bodyMat = new THREE.MeshStandardMaterial({ color: 0x90cdf4 });
+            const body = new THREE.Mesh(bodyGeom, bodyMat);
+            body.position.y = 1.4;
+            charGroup.add(body);
+            
+            const headGeom = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+            const headMat = new THREE.MeshStandardMaterial({ color: 0xfbd38d });
+            const head = new THREE.Mesh(headGeom, headMat);
+            head.position.y = 2;
+            charGroup.add(head);
+            
+            const legGeom = new THREE.BoxGeometry(0.2, 0.6, 0.2);
+            const legMat = new THREE.MeshStandardMaterial({ color: 0x2c5282 });
+            
+            const leftLeg = new THREE.Mesh(legGeom, legMat);
+            leftLeg.position.set(-0.15, 0.7, 0);
+            charGroup.add(leftLeg);
+            
+            const rightLeg = new THREE.Mesh(legGeom, legMat);
+            rightLeg.position.set(0.15, 0.7, 0);
+            charGroup.add(rightLeg);
+            
+            charGroup.position.set(0, 0, -3);
+            charGroup.castShadow = true;
+            scene.add(charGroup);
+            character = charGroup;
+            
+            characterCloth = new ClothSimulation(params.faces, false, true);
+            updateInfo();
+        }
+
+        function initLiquidMode() {
+            clearScene();
+            currentMode = 'liquid';
+            scene.background = new THREE.Color(0x1a202c);
+            camera.position.set(0, 2, 4);
+            controls.target.set(0, 1, 0);
+            
+            const floorGeom = new THREE.PlaneGeometry(20, 20);
+            const floorMat = new THREE.MeshStandardMaterial({
+                color: 0x2d3748,
+                roughness: 0.6,
+                metalness: 0.3
+            });
+            
+            floor = new THREE.Mesh(floorGeom, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.y = 0;
+            floor.receiveShadow = true;
+            scene.add(floor);            
+            const glassGeom = new THREE.CylinderGeometry(0.8, 0.6, 1.5, 32, 1, true);
+            const glassMat = new THREE.MeshPhysicalMaterial({
+                color: 0xaaddff,
+                metalness: 0.0,
+                roughness: 0.1,
+                transmission: 0.9,
+                thickness: 0.1,
+                transparent: true,
+                opacity: 0.6,
+                side: THREE.DoubleSide,
+                clearcoat: 1.0
+            });
+            
+            glass = new THREE.Mesh(glassGeom, glassMat);
+            glass.position.y = 0.75;
+            glass.castShadow = true;
+            scene.add(glass);
+            
+            const baseGeom = new THREE.CylinderGeometry(0.9, 0.9, 0.1, 32);
+            const base = new THREE.Mesh(baseGeom, glassMat);
+            base.position.y = 0.05;
+            glass.add(base);
+            
+            liquidSim = new LiquidSimulation(params.particleCount, params.liquidType);
+            updateInfo();
+        }
+
+        class ClothSimulation {
+            constructor(faces, isHeavy = false, isCharacter = false) {
+                this.faces = faces;
+                this.isHeavy = isHeavy;
+                this.isCharacter = isCharacter;
+                this.particles = [];
+                this.constraints = [];
+                this.dropped = false;
+                this.gridSize = Math.max(2, Math.floor(Math.sqrt(faces)));
+                this.init();
+            }
+            
+            init() {
+                const width = this.isHeavy ? 2.5 : (this.isCharacter ? 1.8 : 2.8);
+                const height = this.isHeavy ? 2.5 : 3;
+                const segmentWidth = width / (this.gridSize - 1);
+                const segmentHeight = height / (this.gridSize - 1);
+                
+                for (let y = 0; y < this.gridSize; y++) {
+                    for (let x = 0; x < this.gridSize; x++) {
+                        const particle = {
+                            x: -width/2 + x * segmentWidth,                            y: this.isHeavy ? 2.5 : (this.isCharacter ? 2.5 : 2.5 - y * segmentHeight),
+                            z: this.isHeavy ? -height/2 + y * segmentHeight : (this.isCharacter ? 0 : 0),
+                            px: -width/2 + x * segmentWidth,
+                            py: this.isHeavy ? 2.5 : (this.isCharacter ? 2.5 : 2.5 - y * segmentHeight),
+                            pz: this.isHeavy ? -height/2 + y * segmentHeight : (this.isCharacter ? 0 : 0),
+                            pinned: this.isCharacter ? (y === 0) : false
+                        };
+                        this.particles.push(particle);
+                    }
+                }
+                
+                for (let y = 0; y < this.gridSize; y++) {
+                    for (let x = 0; x < this.gridSize; x++) {
+                        const index = y * this.gridSize + x;
+                        
+                        if (x < this.gridSize - 1) {
+                            this.constraints.push({
+                                p1: index,
+                                p2: index + 1,
+                                length: segmentWidth
+                            });
+                        }
+                        
+                        if (y < this.gridSize - 1) {
+                            this.constraints.push({
+                                p1: index,
+                                p2: index + this.gridSize,
+                                length: segmentHeight
+                            });
+                        }
+                    }
+                }
+                
+                const geometry = new THREE.PlaneGeometry(width, height, this.gridSize - 1, this.gridSize - 1);
+                
+                const material = new THREE.MeshPhysicalMaterial({
+                    color: this.isCharacter ? 0x4299e1 : (this.isHeavy ? 0xaaccff : 0x88ccff),
+                    metalness: 0.0,
+                    roughness: 0.05,
+                    transmission: this.isCharacter ? 0.3 : 0.95,
+                    thickness: 0.3,
+                    transparent: true,
+                    opacity: this.isHeavy ? params.heavyOpacity : (this.isCharacter ? 0.8 : params.opacity),
+                    side: THREE.DoubleSide,
+                    clearcoat: 1.0,
+                    clearcoatRoughness: 0.03,
+                    ior: 1.5
+                });
+                
+                this.mesh = new THREE.Mesh(geometry, material);                if (!this.isHeavy && !this.isCharacter) {
+                    this.mesh.rotation.x = -Math.PI / 2;
+                }
+                this.mesh.castShadow = true;
+                this.mesh.receiveShadow = true;
+                scene.add(this.mesh);
+            }
+            
+            drop() {
+                this.dropped = true;
+            }
+            
+            update(dt, characterPos = null) {
+                const gravity = this.isHeavy ? params.weight * 0.4 : params.gravity;
+                const stiffness = this.isCharacter ? 0.8 : params.stiffness || 0.95;
+                const damping = this.isHeavy ? 0.94 : (this.isCharacter ? 0.96 : 0.98);
+                
+                if (!this.dropped && !this.isHeavy && !this.isCharacter) {
+                    this.updateMesh();
+                    return;
+                }
+                
+                for (let i = 0; i < this.particles.length; i++) {
+                    const p = this.particles[i];
+                    
+                    if (!p.pinned) {
+                        const vx = (p.x - p.px) * damping;
+                        const vy = (p.y - p.py) * damping;
+                        const vz = (p.z - p.pz) * damping;
+                        
+                        p.px = p.x;
+                        p.py = p.y;
+                        p.pz = p.z;
+                        
+                        p.x += vx;
+                        p.y += vy - gravity * dt * dt;
+                        p.z += vz;
+                    }
+                }
+                
+                if (this.isCharacter && characterPos) {
+                    for (let p of this.particles) {
+                        const dx = p.x - characterPos.x;
+                        const dy = p.y - (characterPos.y + 1.4);
+                        const dz = p.z - characterPos.z;
+                        const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+                        
+                        if (dist < 0.5) {
+                            const nx = dx / dist;
+                            const ny = dy / dist;                            const nz = dz / dist;
+                            p.x = characterPos.x + nx * 0.5;
+                            p.y = characterPos.y + 1.4 + ny * 0.5;
+                            p.z = characterPos.z + nz * 0.5;
+                        }
+                    }
+                }
+                
+                for (let iter = 0; iter < 5; iter++) {
+                    for (const constraint of this.constraints) {
+                        const p1 = this.particles[constraint.p1];
+                        const p2 = this.particles[constraint.p2];
+                        
+                        const dx = p2.x - p1.x;
+                        const dy = p2.y - p1.y;
+                        const dz = p2.z - p1.z;
+                        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                        
+                        if (dist === 0) continue;
+                        
+                        const diff = (dist - constraint.length) / dist;
+                        const correctionX = dx * diff * 0.5 * stiffness;
+                        const correctionY = dy * diff * 0.5 * stiffness;
+                        const correctionZ = dz * diff * 0.5 * stiffness;
+                        
+                        if (!p1.pinned) {
+                            p1.x += correctionX;
+                            p1.y += correctionY;
+                            p1.z += correctionZ;
+                        }
+                        
+                        if (!p2.pinned) {
+                            p2.x -= correctionX;
+                            p2.y -= correctionY;
+                            p2.z -= correctionZ;
+                        }
+                    }
+                }
+                
+                if (this.isHeavy && sphere) {
+                    const spherePos = sphere.position;
+                    const sphereRadius = 0.7;
+                    
+                    for (let p of this.particles) {
+                        const dx = p.x - spherePos.x;
+                        const dy = p.y - spherePos.y;
+                        const dz = p.z - spherePos.z;
+                        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                        
+                        if (dist < sphereRadius + 0.05) {                            const nx = dx / dist;
+                            const ny = dy / dist;
+                            const nz = dz / dist;
+                            p.x = spherePos.x + nx * (sphereRadius + 0.05);
+                            p.y = spherePos.y + ny * (sphereRadius + 0.05);
+                            p.z = spherePos.z + nz * (sphereRadius + 0.05);
+                        }
+                        
+                        if (p.y < 0.02) p.y = 0.02;
+                    }
+                }
+                
+                this.updateMesh();
+            }
+            
+            updateMesh() {
+                const positions = this.mesh.geometry.attributes.position.array;
+                let index = 0;
+                
+                for (let y = 0; y < this.gridSize; y++) {
+                    for (let x = 0; x < this.gridSize; x++) {
+                        const p = this.particles[y * this.gridSize + x];
+                        positions[index] = p.x;
+                        positions[index + 1] = p.y;
+                        positions[index + 2] = p.z;
+                        index += 3;
+                    }
+                }
+                
+                this.mesh.geometry.attributes.position.needsUpdate = true;
+                this.mesh.geometry.computeVertexNormals();
+            }
+            
+            dispose() {
+                if (this.mesh) {
+                    scene.remove(this.mesh);
+                    this.mesh.geometry.dispose();
+                    this.mesh.material.dispose();
+                }
+            }
+        }
+
+        class SlimeSimulation {
+            constructor(faces) {
+                this.faces = faces;
+                this.particles = [];
+                this.constraints = [];
+                this.dropped = false;
+                this.gridSize = Math.max(4, Math.floor(Math.sqrt(faces)));
+                this.init();            }
+            
+            init() {
+                const size = 2;
+                const step = size / (this.gridSize - 1);
+                
+                for (let y = 0; y < this.gridSize; y++) {
+                    for (let x = 0; x < this.gridSize; x++) {
+                        this.particles.push({
+                            x: -size/2 + x * step,
+                            y: 3.5,
+                            z: -size/2 + y * step,
+                            px: -size/2 + x * step,
+                            py: 3.5,
+                            pz: -size/2 + y * step,
+                            pinned: false
+                        });
+                    }
+                }
+                
+                for (let y = 0; y < this.gridSize; y++) {
+                    for (let x = 0; x < this.gridSize; x++) {
+                        const i = y * this.gridSize + x;
+                        if (x < this.gridSize - 1) {
+                            this.constraints.push({ p1: i, p2: i + 1, length: step });
+                        }
+                        if (y < this.gridSize - 1) {
+                            this.constraints.push({ p1: i, p2: i + this.gridSize, length: step });
+                        }
+                    }
+                }
+                
+                const geom = new THREE.PlaneGeometry(size, size, this.gridSize - 1, this.gridSize - 1);
+                const mat = new THREE.MeshPhysicalMaterial({
+                    color: params.slimeColor,
+                    metalness: 0.1,
+                    roughness: 0.1,
+                    transmission: 0.6,
+                    thickness: 0.5,
+                    transparent: true,
+                    opacity: 0.9,
+                    side: THREE.DoubleSide,
+                    clearcoat: 0.8,
+                    clearcoatRoughness: 0.2
+                });
+                
+                this.mesh = new THREE.Mesh(geom, mat);
+                this.mesh.rotation.x = -Math.PI / 2;
+                this.mesh.castShadow = true;
+                scene.add(this.mesh);            }
+            
+            drop() {
+                this.dropped = true;
+            }
+            
+            update(dt) {
+                const gravity = 9.8;
+                const damping = params.viscosity;
+                const stiffness = params.realism;
+                
+                if (!this.dropped) {
+                    this.updateMesh();
+                    return;
+                }
+                
+                for (let p of this.particles) {
+                    if (!p.pinned) {
+                        const vx = (p.x - p.px) * damping;
+                        const vy = (p.y - p.py) * damping;
+                        const vz = (p.z - p.pz) * damping;
+                        
+                        p.px = p.x;
+                        p.py = p.y;
+                        p.pz = p.z;
+                        
+                        p.x += vx;
+                        p.y += vy - gravity * dt * dt;
+                        p.z += vz;
+                    }
+                }
+                
+                for (let iter = 0; iter < 4; iter++) {
+                    for (let c of this.constraints) {
+                        const p1 = this.particles[c.p1];
+                        const p2 = this.particles[c.p2];
+                        
+                        const dx = p2.x - p1.x;
+                        const dy = p2.y - p1.y;
+                        const dz = p2.z - p1.z;
+                        const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+                        
+                        if (dist === 0) continue;
+                        
+                        const diff = (dist - c.length) / dist;
+                        const cx = dx * diff * 0.5 * stiffness;
+                        const cy = dy * diff * 0.5 * stiffness;
+                        const cz = dz * diff * 0.5 * stiffness;
+                        
+                        if (!p1.pinned) {                            p1.x += cx;
+                            p1.y += cy;
+                            p1.z += cz;
+                        }
+                        if (!p2.pinned) {
+                            p2.x -= cx;
+                            p2.y -= cy;
+                            p2.z -= cz;
+                        }
+                    }
+                }
+                
+                if (block) {
+                    const blockTop = 1.0;
+                    const blockHalfWidth = 0.75;
+                    
+                    for (let p of this.particles) {
+                        if (Math.abs(p.x) < blockHalfWidth && Math.abs(p.z) < blockHalfWidth) {
+                            if (p.y < blockTop + 0.03) {
+                                p.y = blockTop + 0.03;
+                                p.py = p.y;
+                            }
+                        }
+                        
+                        if (p.y < 0.03) {
+                            p.y = 0.03;
+                            p.py = p.y;
+                        }
+                    }
+                }
+                
+                this.updateMesh();
+            }
+            
+            updateMesh() {
+                const positions = this.mesh.geometry.attributes.position.array;
+                let i = 0;
+                for (let p of this.particles) {
+                    positions[i++] = p.x;
+                    positions[i++] = p.y;
+                    positions[i++] = p.z;
+                }
+                this.mesh.geometry.attributes.position.needsUpdate = true;
+                this.mesh.geometry.computeVertexNormals();
+            }
+            
+            dispose() {
+                if (this.mesh) {
+                    scene.remove(this.mesh);
+                    this.mesh.geometry.dispose();                    this.mesh.material.dispose();
+                }
+            }
+        }
+
+        class LiquidSimulation {
+            constructor(count, type) {
+                this.count = count;
+                this.type = type;
+                this.particles = [];
+                this.init();
+            }
+            
+            init() {
+                const colors = {
+                    water: 0x4299e1,
+                    lava: 0xf56565,
+                    juice: 0xf6ad55,
+                    nonnewtonian: 0x9f7aea,
+                    newtonian: 0x68d391
+                };
+                
+                const viscosity = {
+                    water: 0.98,
+                    lava: 0.95,
+                    juice: 0.97,
+                    nonnewtonian: 0.99,
+                    newtonian: 0.98
+                };
+                
+                params.liquidViscosity = viscosity[this.type];
+                
+                const geom = new THREE.SphereGeometry(0.04, 8, 8);
+                const mat = new THREE.MeshPhysicalMaterial({
+                    color: colors[this.type],
+                    metalness: this.type === 'lava' ? 0.3 : 0.1,
+                    roughness: this.type === 'lava' ? 0.3 : 0.2,
+                    transmission: this.type === 'water' ? 0.7 : 0.3,
+                    transparent: true,
+                    opacity: 0.85,
+                    clearcoat: this.type === 'water' ? 0.8 : 0.5,
+                    emissive: this.type === 'lava' ? 0xff4400 : 0x000000,
+                    emissiveIntensity: this.type === 'lava' ? 0.5 : 0
+                });
+                
+                const spread = 0.3;
+                for (let i = 0; i < this.count; i++) {
+                    const mesh = new THREE.Mesh(geom, mat.clone());
+                    mesh.position.set(
+                        (Math.random() - 0.5) * spread,                        3 + Math.random() * 0.5,
+                        (Math.random() - 0.5) * spread
+                    );
+                    mesh.castShadow = true;
+                    scene.add(mesh);
+                    
+                    this.particles.push({
+                        mesh: mesh,
+                        vx: 0,
+                        vy: 0,
+                        vz: 0,
+                        resting: false
+                    });
+                }
+            }
+            
+            drop() {
+                this.particles.forEach(p => p.resting = false);
+            }
+            
+            update(dt) {
+                const gravity = 9.8;
+                const damping = params.liquidViscosity;
+                const radius = 0.04;
+                
+                for (let p of this.particles) {
+                    if (p.resting) continue;
+                    
+                    p.vy -= gravity * dt;
+                    p.vx *= damping;
+                    p.vy *= damping;
+                    p.vz *= damping;
+                    
+                    p.mesh.position.x += p.vx * dt;
+                    p.mesh.position.y += p.vy * dt;
+                    p.mesh.position.z += p.vz * dt;
+                    
+                    const glassRadius = 0.7;
+                    const glassHeight = 1.5;
+                    const dist = Math.sqrt(p.mesh.position.x ** 2 + p.mesh.position.z ** 2);
+                    
+                    if (dist > glassRadius - radius && p.mesh.position.y < glassHeight) {
+                        const angle = Math.atan2(p.mesh.position.z, p.mesh.position.x);
+                        p.mesh.position.x = Math.cos(angle) * (glassRadius - radius);
+                        p.mesh.position.z = Math.sin(angle) * (glassRadius - radius);
+                        p.vx *= -0.3;
+                        p.vz *= -0.3;
+                    }
+                    
+                    if (p.mesh.position.y < radius + 0.05) {                        p.mesh.position.y = radius + 0.05;
+                        p.vy *= -0.2;
+                        if (Math.abs(p.vy) < 0.1) {
+                            p.resting = true;
+                            p.vy = 0;
+                        }
+                    }
+                    
+                    for (let other of this.particles) {
+                        if (p === other) continue;
+                        
+                        const dx = p.mesh.position.x - other.mesh.position.x;
+                        const dy = p.mesh.position.y - other.mesh.position.y;
+                        const dz = p.mesh.position.z - other.mesh.position.z;
+                        const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+                        const minDist = radius * 2.2;
+                        
+                        if (dist < minDist && dist > 0) {
+                            const force = (minDist - dist) * 0.8;
+                            const nx = dx / dist;
+                            const ny = dy / dist;
+                            const nz = dz / dist;
+                            
+                            p.mesh.position.x += nx * force;
+                            p.mesh.position.y += ny * force;
+                            p.mesh.position.z += nz * force;
+                            
+                            const tempVy = p.vy;
+                            p.vy = other.vy * 0.5;
+                            other.vy = tempVy * 0.5;
+                        }
+                    }
+                }
+            }
+            
+            dispose() {
+                this.particles.forEach(p => {
+                    scene.remove(p.mesh);
+                    p.mesh.geometry.dispose();
+                    p.mesh.material.dispose();
+                });
+                this.particles = [];
+            }
+        }
+
+        function setupUI() {
+            document.getElementById('toggle-btn').addEventListener('click', () => {
+                const controls = document.getElementById('controls');
+                const btn = document.getElementById('toggle-btn');
+                if (controls.classList.contains('hidden')) {                    controls.classList.remove('hidden');
+                    btn.textContent = '▼ Скрыть';
+                } else {
+                    controls.classList.add('hidden');
+                    btn.textContent = '▲ Показать';
+                }
+            });
+            
+            document.getElementById('mode-select').addEventListener('change', (e) => {
+                const mode = e.target.value;
+                
+                document.getElementById('ramp-controls').style.display = mode === 'ramp' ? 'block' : 'none';
+                document.getElementById('heavy-controls').style.display = mode === 'heavy' ? 'block' : 'none';
+                document.getElementById('slime-controls').style.display = mode === 'slime' ? 'block' : 'none';
+                document.getElementById('character-controls').style.display = mode === 'character' ? 'block' : 'none';
+                document.getElementById('liquid-controls').style.display = mode === 'liquid' ? 'block' : 'none';
+                
+                const actionBtn = document.getElementById('action-btn');
+                if (mode === 'ramp') {
+                    actionBtn.textContent = '▶️ Запуск';
+                    document.getElementById('mode-name').textContent = 'Рампа и стекло';
+                    initRampMode();
+                } else if (mode === 'heavy') {
+                    actionBtn.textContent = '⬇️ Уронить ткань';
+                    document.getElementById('mode-name').textContent = 'Тяжёлая ткань';
+                    initHeavyMode();
+                } else if (mode === 'slime') {
+                    actionBtn.textContent = '💧 Уронить слайм';
+                    document.getElementById('mode-name').textContent = 'Слайм на блок';
+                    initSlimeMode();
+                } else if (mode === 'character') {
+                    actionBtn.textContent = '🏃 Запуск персонажа';
+                    document.getElementById('mode-name').textContent = 'Персонаж';
+                    initCharacterMode();
+                } else {
+                    actionBtn.textContent = '💧 Налить жидкость';
+                    document.getElementById('mode-name').textContent = 'Жидкости';
+                    initLiquidMode();
+                }
+            });
+            
+            document.getElementById('action-btn').addEventListener('click', () => {
+                if (currentMode === 'ramp') {
+                    const ballGeom = new THREE.SphereGeometry(0.15, 32, 32);
+                    const ballMat = new THREE.MeshPhysicalMaterial({
+                        color: 0x00a8cc,
+                        metalness: 0.4,
+                        roughness: 0.1,
+                        clearcoat: 1.0
+                    });                    const ball = new THREE.Mesh(ballGeom, ballMat);
+                    ball.position.set(-2.4, 3.2, 1);
+                    ball.castShadow = true;
+                    scene.add(ball);
+                    
+                    balls.push({
+                        mesh: ball,
+                        velocity: new THREE.Vector3(0, 0, 0),
+                        onRamp: true,
+                        active: true,
+                        update: function(dt) {
+                            if (!this.active) return;
+                            
+                            const pos = this.mesh.position;
+                            
+                            if (this.onRamp) {
+                                // Ball on ramp physics
+                                const rampHeight = getRampHeight(pos.x);
+                                
+                                if (rampHeight > -100 && pos.y <= rampHeight + 0.15) {
+                                    // On ramp - roll down
+                                    const slope = 0.5; // Ramp angle factor
+                                    this.velocity.x += params.gravity * slope * dt;
+                                    this.velocity.x *= 0.99; // Friction
+                                    
+                                    pos.x += this.velocity.x * dt;
+                                    pos.y = rampHeight + 0.15;
+                                    pos.z = 1;
+                                    
+                                    // Rotate ball
+                                    this.mesh.rotation.x += this.velocity.x * dt * 5;
+                                    
+                                    // Check if reached end of ramp
+                                    if (pos.x > 0.3) {
+                                        this.onRamp = false;
+                                        this.velocity.z = -2; // Push toward glass
+                                    }
+                                } else {
+                                    this.onRamp = false;
+                                }
+                            } else {
+                                // Ball in air
+                                this.velocity.y -= params.gravity * dt;
+                                pos.add(this.velocity.clone().multiplyScalar(dt));
+                                
+                                // Glass collision (at z = -1)
+                                if (glassPanel) {
+                                    const glassZ = glassPanel.position.z;
+                                    const glassY = glassPanel.position.y;
+                                                                        if (Math.abs(pos.z - glassZ) < 0.15 && 
+                                        pos.y < glassY + 1.75 && pos.y > glassY - 1.75 &&
+                                        pos.x > -1.5 && pos.x < 1.5) {
+                                        this.velocity.z *= -0.6;
+                                        this.mesh.position.z = glassZ + 0.15;
+                                    }
+                                }
+                                
+                                // Floor collision
+                                if (pos.y < 0.15) {
+                                    pos.y = 0.15;
+                                    this.velocity.y *= -0.4;
+                                    this.velocity.x *= 0.95;
+                                    this.velocity.z *= 0.95;
+                                }
+                                
+                                this.mesh.rotation.x += this.velocity.x * dt * 5;
+                            }
+                        },
+                        dispose: function() {
+                            scene.remove(this.mesh);
+                            this.mesh.geometry.dispose();
+                            this.mesh.material.dispose();
+                        }
+                    });
+                } else if (currentMode === 'heavy' && heavyCloth) {
+                    heavyCloth.drop();
+                    const wd = document.getElementById('weight-display');
+                    wd.textContent = params.weight + 'kg';
+                    wd.classList.add('show');
+                    setTimeout(() => wd.classList.remove('show'), 2000);
+                } else if (currentMode === 'slime' && slime) {
+                    slime.drop();
+                } else if (currentMode === 'character' && characterCloth && character) {
+                    characterCloth.drop();
+                    let time = 0;
+                    const runInterval = setInterval(() => {
+                        time += 0.05 * params.speed;
+                        character.position.z = -3 + time * 2;
+                        if (characterCloth) {
+                            characterCloth.update(0.016, character.position);
+                        }
+                        if (character.position.z > 3) {
+                            clearInterval(runInterval);
+                        }
+                    }, 16);
+                } else if (currentMode === 'liquid' && liquidSim) {
+                    liquidSim.drop();
+                }
+            });            
+            document.getElementById('reset-btn').addEventListener('click', () => {
+                if (currentMode === 'ramp') {
+                    balls.forEach(b => { if(b.dispose) b.dispose(); });
+                    balls = [];
+                } else if (currentMode === 'heavy') {
+                    if (heavyCloth) { heavyCloth.dispose(); heavyCloth = new ClothSimulation(params.faces, true); }
+                } else if (currentMode === 'slime') {
+                    if (slime) { slime.dispose(); slime = new SlimeSimulation(params.faces); }
+                } else if (currentMode === 'character') {
+                    if (characterCloth) { characterCloth.dispose(); characterCloth = new ClothSimulation(params.faces, false, true); }
+                    if (character) character.position.set(0, 0, -3);
+                } else if (currentMode === 'liquid') {
+                    if (liquidSim) { liquidSim.dispose(); liquidSim = new LiquidSimulation(params.particleCount, params.liquidType); }
+                }
+            });
+            
+            document.getElementById('faces-select').addEventListener('change', (e) => {
+                params.faces = parseInt(e.target.value);
+                document.getElementById('faces-value').textContent = params.faces.toLocaleString();
+                
+                if (currentMode === 'heavy' && heavyCloth) {
+                    heavyCloth.dispose();
+                    heavyCloth = new ClothSimulation(params.faces, true);
+                } else if (currentMode === 'slime' && slime) {
+                    slime.dispose();
+                    slime = new SlimeSimulation(params.faces);
+                } else if (currentMode === 'character' && characterCloth) {
+                    characterCloth.dispose();
+                    characterCloth = new ClothSimulation(params.faces, false, true);
+                }
+            });
+            
+            document.getElementById('gravity').addEventListener('input', (e) => {
+                params.gravity = parseFloat(e.target.value);
+                document.getElementById('gravity-value').textContent = params.gravity;
+            });
+            
+            document.getElementById('opacity').addEventListener('input', (e) => {
+                params.opacity = parseFloat(e.target.value);
+                document.getElementById('opacity-value').textContent = params.opacity;
+                if (glassPanel) glassPanel.material.opacity = params.opacity;
+            });
+            
+            document.getElementById('weight').addEventListener('input', (e) => {
+                params.weight = parseInt(e.target.value);
+                document.getElementById('weight-value').textContent = params.weight;
+            });
+            
+            document.getElementById('heavy-opacity').addEventListener('input', (e) => {                params.heavyOpacity = parseFloat(e.target.value);
+                document.getElementById('heavy-opacity-value').textContent = params.heavyOpacity;
+                if (heavyCloth && heavyCloth.mesh) heavyCloth.mesh.material.opacity = params.heavyOpacity;
+            });
+            
+            document.getElementById('viscosity').addEventListener('input', (e) => {
+                params.viscosity = parseFloat(e.target.value);
+                document.getElementById('viscosity-value').textContent = params.viscosity;
+            });
+            
+            document.getElementById('realism').addEventListener('input', (e) => {
+                params.realism = parseFloat(e.target.value);
+                document.getElementById('realism-value').textContent = params.realism;
+            });
+            
+            document.getElementById('slime-color').addEventListener('change', (e) => {
+                params.slimeColor = parseInt(e.target.value);
+                const colors = { '0x4ade80': 'Зелёный', '0xf472b6': 'Розовый', '0x60a5fa': 'Голубой', '0xfbbf24': 'Жёлтый' };
+                document.getElementById('slime-color-value').textContent = colors[e.target.value];
+                if (slime && slime.mesh) slime.mesh.material.color.set(params.slimeColor);
+            });
+            
+            document.getElementById('speed').addEventListener('input', (e) => {
+                params.speed = parseFloat(e.target.value);
+                document.getElementById('speed-value').textContent = params.speed;
+            });
+            
+            document.getElementById('liquid-type').addEventListener('change', (e) => {
+                params.liquidType = e.target.value;
+                if (liquidSim) {
+                    liquidSim.dispose();
+                    liquidSim = new LiquidSimulation(params.particleCount, params.liquidType);
+                }
+            });
+            
+            document.getElementById('liquid-viscosity').addEventListener('input', (e) => {
+                params.liquidViscosity = parseFloat(e.target.value);
+                document.getElementById('liquid-viscosity-value').textContent = params.liquidViscosity;
+            });
+            
+            document.getElementById('particle-count').addEventListener('input', (e) => {
+                params.particleCount = parseInt(e.target.value);
+                document.getElementById('particle-count-value').textContent = params.particleCount;
+                if (liquidSim) {
+                    liquidSim.dispose();
+                    liquidSim = new LiquidSimulation(params.particleCount, params.liquidType);
+                }
+            });
+        }
+        function updateInfo() {
+            let count = 0;
+            if (currentMode === 'ramp') count = balls.length;
+            else if (currentMode === 'liquid') count = liquidParticles.length;
+            else count = 1;
+            document.getElementById('obj-count').textContent = count;
+        }
+
+        const clock = new THREE.Clock();
+        let frameCount = 0;
+        let lastFpsUpdate = 0;
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = Math.min(clock.getDelta(), 0.05);
+            
+            if (currentMode === 'ramp') {
+                balls.forEach(ball => {
+                    if (ball.update) ball.update(dt);
+                });
+            } else if (currentMode === 'heavy') {
+                if (heavyCloth) heavyCloth.update(dt);
+            } else if (currentMode === 'slime') {
+                if (slime) slime.update(dt);
+            } else if (currentMode === 'character') {
+                if (characterCloth && character) {
+                    characterCloth.update(dt, character.position);
+                }
+            } else if (currentMode === 'liquid') {
+                if (liquidSim) liquidSim.update(dt);
+            }
+            
+            frameCount++;
+            const time = Date.now() * 0.001;
+            if (time - lastFpsUpdate > 1) {
+                document.getElementById('fps').textContent = frameCount;
+                frameCount = 0;
+                lastFpsUpdate = time;
+            }
+            
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        init();
+    </script>
+</body>
+</html>
